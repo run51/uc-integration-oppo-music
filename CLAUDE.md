@@ -19,6 +19,7 @@ That folder is deliberately not committed in the emby-oppo-remote repository.
 
 ## Current state (2026-11-11)
 
+- **Runs ON THE REMOTE since 2026-11-11 18:26** (custom driver 0.1.0 from the GitHub release run51/uc-integration-oppo-music v0.1.0, repo pushed with deploy key alias `github-oppo-music`, local git repo ~/projets/oppo-music-uc branch main, tag v0.1.0). Install = REST POST /api/intg/install (multipart `file`); the MCP install/update tools failed silently: the remote's WiFi is weak (RSSI -76..-79 dBm, 2.4 GHz, ~230 KB/s upload) and the 20 MB package takes ~115 s, the first tries timed out (408). Setup data: server, ip_control 192.168.2.208:23, oppo_host; configure_integration_entities sometimes needs a second call. Same entity ids, activity unchanged. Unraid container `oppo-music-uc` stopped (kept as fallback: re-register external driver with driver_url ws://192.168.2.208:9095).
 - **0.1.0** released 2026-11-11 (maintainer: "passe le pilote OPPO Music en 0.1.0" after "tout marche"):
   same code as 0.1.0-test7. The Unraid container still runs the image tagged `oppo-music-uc:0.1.0-test1`
   (runtime only, the app is mounted from appdata), so no rebuild was needed. Not a git repository yet.
