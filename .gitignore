@@ -1,0 +1,49 @@
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local config / generated runtime files
+config.json
+
+# Build output / packaged artifacts
+artifacts/
+*.tar.gz
+
+# Editor / local IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local Python version manager
+.python-version
+
+# Local Proxmox MCP job database (unrelated to this project)
+proxmox-jobs.sqlite3*
+ref/

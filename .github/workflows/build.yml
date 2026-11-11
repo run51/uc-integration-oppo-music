@@ -1,0 +1,166 @@
+# Triggered by version tag creation to build a UC integration release archive.
+name: "Build & Release"
+
+"on":
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.1.0, without v prefix)"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  INTG_NAME: oppo-music
+  # Python version to use in the Unfolded Circle PyInstaller builder image.
+  PYTHON_VER: 3.11.12-0.3.0
+
+jobs:
+  build:
+    name: Build Release
+    runs-on: ubuntu-24.04-arm
+
+    outputs:
+      version: ${{ steps.get-version-and-id.outputs.VERSION }}
+      driver_id: ${{ steps.get-version-and-id.outputs.DRIVER_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 200
+
+      - name: Get version and id
+        id: get-version-and-id
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+
+          DRIVER_ID="$(jq .driver_id -r driver.json)"
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "DRIVER_ID=$DRIVER_ID" >> "$GITHUB_ENV"
+
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "DRIVER_ID=$DRIVER_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        shell: bash
+        run: |
+          echo "Starting PyInstaller build"
+
+          docker run --rm --name builder \
+            --user="$(id -u):$(id -g)" \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            docker.io/unfoldedcircle/r2-pyinstaller:${PYTHON_VER} \
+            bash -c \
+            "cd /workspace && \
+              python -m pip install -r requirements.txt && \
+              pyinstaller --clean --onedir \
+                --name intg-${DRIVER_ID} \
+                intg-oppo-music/driver.py"
+
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts/bin
+
+          mv dist/intg-${{ env.DRIVER_ID }}/* artifacts/bin
+          mv artifacts/bin/intg-${{ env.DRIVER_ID }} artifacts/bin/driver
+
+          cp driver.json artifacts/
+
+          if [ -f "oppo-music.png" ]; then
+            cp "oppo-music.png" artifacts/
+          fi
+
+          echo "ARTIFACT_NAME=uc-intg-${{ env.DRIVER_ID }}-${{ env.VERSION }}-aarch64" >> "$GITHUB_ENV"
+
+      - name: Create upload artifact archive
+        shell: bash
+        run: |
+          tar czvf "${{ env.ARTIFACT_NAME }}.tar.gz" -C "${GITHUB_WORKSPACE}/artifacts" .
+          ls -lah
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_NAME }}.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-24.04
+    needs: [build]
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog for this version
+        id: changelog
+        shell: bash
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+
+          NOTES=$(awk "/^## v?${VERSION}/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+
+          NOTES=$(echo "$NOTES" | sed '/./,$!d' | sed -e :a -e '/^\s*$/{$d;N;ba}')
+
+          if [ -z "$NOTES" ]; then
+            NOTES="See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
+          fi
+
+          echo "$NOTES" > release_notes.md
+          cat release_notes.md
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+
+      - name: Extract build archive from downloaded files
+        shell: bash
+        run: |
+          ls -R
+
+          for D in *; do
+            if [ -d "$D" ]; then
+              mv "$D"/* ./
+            fi
+          done
+
+          ls -lah
+
+      - name: Create hash file
+        shell: bash
+        run: |
+          for filename in *.tar.gz; do
+            sha256sum "$filename" >> "${{ needs.build.outputs.driver_id }}.hash"
+          done
+
+          cat "${{ needs.build.outputs.driver_id }}.hash"
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "*.tar.gz,${{ needs.build.outputs.driver_id }}.hash"
+          draft: false
+          # Test builds (version containing "test", e.g. 0.1.8-test1) are pre-releases:
+          # never shown as the latest version.
+          prerelease: ${{ contains(needs.build.outputs.version, 'test') }}
+          makeLatest: ${{ contains(needs.build.outputs.version, 'test') && 'false' || 'true' }}
+          bodyFile: release_notes.md
+          generateReleaseNotes: false
+          artifactErrorsFailBuild: true
+          tag: v${{ needs.build.outputs.version }}

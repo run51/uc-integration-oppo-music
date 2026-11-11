@@ -1,0 +1,82 @@
+{
+  "driver_id": "oppo_music",
+  "version": "0.1.0",
+  "min_core_api": "0.20.0",
+  "name": {
+    "en": "OPPO Music",
+    "fr": "OPPO Music"
+  },
+  "icon": "uc:music",
+  "description": {
+    "en": "Browse the OPPO Music library (artists, albums and tracks, with their covers and formats: SACD, Blu-ray Audio, DVD-Audio, FLAC) and play it on an OPPO UDP-203 / UDP-205. Needs a running OPPO Music server, which indexes the music and drives the player.",
+    "fr": "Parcourir la bibliothèque OPPO Music (artistes, albums et pistes, avec leurs pochettes et leurs formats : SACD, Blu-ray Audio, DVD-Audio, FLAC) et la lire sur un OPPO UDP-203 / UDP-205. Nécessite un serveur OPPO Music en marche, qui indexe la musique et pilote le lecteur."
+  },
+  "port": 9095,
+  "developer": {
+    "name": "run51",
+    "email": "noreply@example.com",
+    "url": "https://github.com/run51"
+  },
+  "home_page": "https://github.com/run51",
+  "device_discovery": false,
+  "setup_data_schema": {
+    "title": {
+      "en": "OPPO Music server",
+      "fr": "Serveur OPPO Music"
+    },
+    "settings": [
+      {
+        "id": "info",
+        "label": {
+          "en": "OPPO Music server",
+          "fr": "Serveur OPPO Music"
+        },
+        "field": {
+          "label": {
+            "value": {
+              "en": "Address of the OPPO Music server, as the remote reaches it: the covers are loaded from there.",
+              "fr": "Adresse du serveur OPPO Music, telle que la remote l'atteint : les pochettes sont chargées depuis cette adresse."
+            }
+          }
+        }
+      },
+      {
+        "id": "server",
+        "label": {
+          "en": "Server address",
+          "fr": "Adresse du serveur"
+        },
+        "field": {
+          "text": {
+            "value": "http://192.168.2.208:8098"
+          }
+        }
+      },
+      {
+        "id": "ip_control",
+        "label": {
+          "en": "OPPO IP control (oppo-multiplexer)",
+          "fr": "Contrôle IP de l'OPPO (oppo-multiplexer)"
+        },
+        "field": {
+          "text": {
+            "value": "192.168.2.208:23"
+          }
+        }
+      },
+      {
+        "id": "oppo_host",
+        "label": {
+          "en": "OPPO address (to see when it has started)",
+          "fr": "Adresse de l'OPPO (pour savoir quand il a démarré)"
+        },
+        "field": {
+          "text": {
+            "value": "192.168.2.195"
+          }
+        }
+      }
+    ]
+  },
+  "release_date": "2026-11-11"
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>oppo-music-uc</Name>
+  <Repository>oppo-music-uc:0.1.0</Repository>
+  <Registry/>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project/>
+  <Overview>Unfolded Circle Remote integration for OPPO Music: browse the music library (artists, albums, tracks, covers and formats) from the remote and play it on the OPPO UDP-205 through the OPPO Music server. Image built locally from /mnt/user/appdata/oppo-music-uc/app (docker build -t oppo-music-uc:VERSION .). Host network: the remote discovers it over mDNS and connects to its WebSocket port.</Overview>
+  <Category>Tools: MediaApp:Music</Category>
+  <WebUI/>
+  <Icon/>
+  <ExtraParams>-w /app</ExtraParams>
+  <PostArgs>python intg-oppo-music/driver.py</PostArgs>
+  <Config Name="App" Target="/app" Default="/mnt/user/appdata/oppo-music-uc/app" Mode="rw" Description="Driver files (driver.json, intg-oppo-music): replace them and restart to update the driver." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/oppo-music-uc/app</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/oppo-music-uc/config" Mode="rw" Description="Settings saved by the remote's setup (OPPO Music server address)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/oppo-music-uc/config</Config>
+  <Config Name="WebSocket port" Target="UC_INTEGRATION_HTTP_PORT" Default="9095" Mode="" Description="Port the remote connects to." Type="Variable" Display="always" Required="true" Mask="false">9095</Config>
+  <Config Name="Listen address" Target="UC_INTEGRATION_INTERFACE" Default="192.168.2.208" Mode="" Description="Address of this server on the LAN, announced to the remote over mDNS." Type="Variable" Display="always" Required="true" Mask="false">192.168.2.208</Config>
+  <Config Name="Log level" Target="UC_LOG_LEVEL" Default="INFO" Mode="" Description="INFO, or DEBUG to see every message." Type="Variable" Display="advanced" Required="false" Mask="false">INFO</Config>
+  <Config Name="TZ" Target="TZ" Default="Europe/Paris" Mode="" Description="Time zone of the logs." Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Paris</Config>
+</Container>
