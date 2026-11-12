@@ -20,6 +20,7 @@ import ucapi
 from client import OppoMusicClient, OppoMusicError
 from ipcontrol import IpControl, main_software_up, power_off, power_state, set_pure_audio, wait_until_started
 from library import Library, play_request
+from style import style_value
 from ucapi import media_player as mp
 from ucapi import sensor
 
@@ -137,6 +138,7 @@ class Driver:
         self.ip_control: IpControl | None = None
         self.oppo_host = ""
         self.last_signal: str | None = None
+        self.sensor_font_size, self.sensor_color = 0, ""
         self.background: set[asyncio.Task] = set()
         self.library: Library | None = None
         self.library_at = 0.0
@@ -160,17 +162,37 @@ class Driver:
         except (OSError, ValueError):
             return None
 
-    def save_config(self, server: str, ip_control: str = "", oppo_host: str = "") -> None:
+    def save_config(
+        self,
+        server: str,
+        ip_control: str = "",
+        oppo_host: str = "",
+        sensor_font_size: int = 0,
+        sensor_color: str = "",
+    ) -> None:
         os.makedirs(os.path.dirname(self.config_file()) or ".", exist_ok=True)
-        config = {"server": server}
+        config: dict = {"server": server}
         if ip_control:
             config["ip_control"] = ip_control
         if oppo_host:
             config["oppo_host"] = oppo_host
+        if sensor_font_size:
+            config["sensor_font_size"] = sensor_font_size
+        if sensor_color:
+            config["sensor_color"] = sensor_color
         with open(self.config_file(), "w", encoding="utf-8") as file:
             json.dump(config, file)
 
-    def configure(self, server: str, ip_control: str = "", oppo_host: str = "") -> None:
+    def configure(
+        self,
+        server: str,
+        ip_control: str = "",
+        oppo_host: str = "",
+        sensor_font_size: int = 0,
+        sensor_color: str = "",
+    ) -> None:
+        self.sensor_font_size, self.sensor_color = sensor_font_size, sensor_color.strip()
+        self.last_signal = None  # resend the signal with the new style
         self.client = OppoMusicClient(server)
         self.ip_control = IpControl(ip_control or default_ip_control(server))
         self.oppo_host = oppo_host.strip()
@@ -213,8 +235,13 @@ class Driver:
                 return ucapi.SetupError(ucapi.IntegrationSetupError.NOT_FOUND)
             ip_control = (msg.setup_data.get("ip_control") or "").strip()
             oppo_host = (msg.setup_data.get("oppo_host") or "").strip()
-            self.save_config(server, ip_control, oppo_host)
-            self.configure(server, ip_control, oppo_host)
+            try:
+                font_size = int(float(msg.setup_data.get("sensor_font_size") or 0))
+            except (TypeError, ValueError):
+                font_size = 0
+            color = (msg.setup_data.get("sensor_color") or "").strip()
+            self.save_config(server, ip_control, oppo_host, font_size, color)
+            self.configure(server, ip_control, oppo_host, font_size, color)
             self.library, self.library_at = Library(data, server), time.time()
             _LOG.info(
                 "Setup done: %d artists, %d albums",
@@ -521,7 +548,8 @@ class Driver:
         if value == self.last_signal:
             return
         self.last_signal = value
-        attrs = {sensor.Attributes.STATE: sensor.States.ON, sensor.Attributes.VALUE: value}
+        styled = style_value(value, self.sensor_font_size, self.sensor_color)
+        attrs = {sensor.Attributes.STATE: sensor.States.ON, sensor.Attributes.VALUE: styled}
         self.api.available_entities.update_attributes(SIGNAL_ID, attrs)
         self.api.configured_entities.update_attributes(SIGNAL_ID, attrs)
 
@@ -568,7 +596,13 @@ async def main() -> None:
     driver.register_events()
     config = driver.load_config()
     if config and config.get("server"):
-        driver.configure(config["server"], config.get("ip_control", ""), config.get("oppo_host", ""))
+        driver.configure(
+            config["server"],
+            config.get("ip_control", ""),
+            config.get("oppo_host", ""),
+            config.get("sensor_font_size", 0),
+            config.get("sensor_color", ""),
+        )
     await driver.api.init("driver.json", driver.setup_handler)
     await asyncio.Event().wait()
 

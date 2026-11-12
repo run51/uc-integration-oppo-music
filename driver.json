@@ -1,6 +1,6 @@
 {
   "driver_id": "oppo_music",
-  "version": "0.1.0",
+  "version": "0.1.1-test1",
   "min_core_api": "0.20.0",
   "name": {
     "en": "OPPO Music",
@@ -73,6 +73,34 @@
         "field": {
           "text": {
             "value": "192.168.2.195"
+          }
+        }
+      },
+      {
+        "id": "sensor_font_size",
+        "label": {
+          "en": "Sensor value text size: 0 = normal, 1 = 70 %, 2 = 80 %",
+          "fr": "Taille du texte du capteur : 0 = normale, 1 = 70 %, 2 = 80 %"
+        },
+        "field": {
+          "number": {
+            "value": 0,
+            "min": 0,
+            "max": 7,
+            "steps": 1,
+            "decimals": 0
+          }
+        }
+      },
+      {
+        "id": "sensor_color",
+        "label": {
+          "en": "Sensor value colour (#4da6ff, lightblue…, empty = normal)",
+          "fr": "Couleur du capteur (#4da6ff, lightblue…, vide = normale)"
+        },
+        "field": {
+          "text": {
+            "value": ""
           }
         }
       }
