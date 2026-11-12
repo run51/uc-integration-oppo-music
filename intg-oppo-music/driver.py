@@ -12,9 +12,11 @@ import contextlib
 import json
 import logging
 import os
+import socket
 import time
 import urllib.parse
 
+import images
 import status as player_status
 import ucapi
 from client import OppoMusicClient, OppoMusicError
@@ -74,6 +76,19 @@ PURE_AUDIO_OFF_TIMEOUT = 12
 OPPO_OFF_TIMEOUT = 9  # s: the remote waited 8.2 s for a power-on; a following "off" step is the fallback
 PURE_AUDIO_SETTLE = 5  # s after the player has started, before Pure Audio is set
 PURE_AUDIO_FALLBACK_DELAY = 45  # s, when the player address is unknown and its start cannot be seen
+
+
+IMAGE_PORT = 9310  # the Remote refuses 8000-9200 to custom integrations
+
+
+def lan_address() -> str:
+    """Address of the Remote on the local network (the covers are also shown by the web configurator)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("192.0.2.1", 9))  # no packet is sent: only the route is looked up
+            return sock.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
 
 
 def normalize_server(value: str) -> str:
@@ -141,6 +156,7 @@ class Driver:
         self.sensor_font_size, self.sensor_color = 0, ""
         self.background: set[asyncio.Task] = set()
         self.library: Library | None = None
+        self.images: images.ImageCache | None = None
         self.library_at = 0.0
         self.library_lock = asyncio.Lock()
         self.details: dict[str, dict] = {}
@@ -198,6 +214,15 @@ class Driver:
         self.oppo_host = oppo_host.strip()
         self.library, self.library_at = None, 0.0
         self.details.clear()
+        if self.images is None:
+            port = int(os.getenv("OPPO_MUSIC_IMAGE_PORT", str(IMAGE_PORT)))
+            self.images = images.ImageCache(os.path.join(self.api.config_dir_path, "images"))
+            self.images.base = f"http://{lan_address()}:{port}"
+            try:
+                images.serve(self.images, port)
+            except OSError as ex:  # covers then come straight from the server
+                _LOG.warning("Image cache not served on port %d: %s", port, ex)
+                self.images.base = ""
         self.last = {}
         if not self.api.available_entities.contains(ENTITY_ID):
             self.api.available_entities.add(OppoMusicPlayer(self))
@@ -242,7 +267,7 @@ class Driver:
             color = (msg.setup_data.get("sensor_color") or "").strip()
             self.save_config(server, ip_control, oppo_host, font_size, color)
             self.configure(server, ip_control, oppo_host, font_size, color)
-            self.library, self.library_at = Library(data, server), time.time()
+            self.library, self.library_at = self.new_library(data, server), time.time()
             _LOG.info(
                 "Setup done: %d artists, %d albums",
                 len(self.library.artists),
@@ -255,6 +280,15 @@ class Driver:
 
     # ------------------------------------------------------------------- library
 
+    def new_library(self, data: dict, server: str) -> Library:
+        """Library whose covers go through the image cache; the covers not cached yet are queued."""
+        library = Library(data, server, self.images.url_for if self.images and self.images.base else None)
+        if self.images and self.images.base:
+            queued = self.images.prefetch(library.cover_urls())
+            if queued:
+                _LOG.info("Image cache: %d covers queued", queued)
+        return library
+
     async def ensure_library(self) -> Library:
         if self.client is None:
             raise OppoMusicError(503, "not_configured")
@@ -262,7 +296,7 @@ class Driver:
             if self.library is None or time.time() - self.library_at > LIBRARY_TTL:
                 try:
                     data = await self.client.get("/api/library", timeout=20)
-                    self.library = Library(data, self.client.server)
+                    self.library = self.new_library(data, self.client.server)
                     self.details.clear()
                 except (OppoMusicError, OSError, ValueError):
                     if self.library is None:

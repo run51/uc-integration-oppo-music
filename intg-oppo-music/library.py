@@ -74,8 +74,9 @@ def play_request(media_id: str) -> dict | None:
 
 
 class Library:
-    def __init__(self, data: dict, server: str):
+    def __init__(self, data: dict, server: str, img=None):
         self.server = server.rstrip("/")
+        self.img = img  # address through the image cache of the integration (None: the server's address)
         self.albums = {a["id"]: a for a in data.get("albums") or [] if a.get("id")}
         artists = [a for a in data.get("artists") or [] if a.get("id") and a.get("albums")]
         self.artists = sorted(artists, key=lambda a: sort_key(a.get("name") or ""))
@@ -83,11 +84,22 @@ class Library:
 
     # ----------------------------------------------------------------- helpers
 
-    def cover(self, album_id: str | None, size: int = 600) -> str | None:
+    def cover_url(self, album_id: str | None, size: int = 600) -> str | None:
+        """Address of a cover on the OPPO Music server (made at this size by the server)."""
         album = self.albums.get(album_id or "")
         if not album or not album.get("cover"):
             return None
         return f"{self.server}/api/cover/{album_id}?s={size}"
+
+    def cover(self, album_id: str | None, size: int = 600) -> str | None:
+        url = self.cover_url(album_id, size)
+        return self.img(url) if url and self.img else url
+
+    def cover_urls(self) -> list[str]:
+        """The covers shown in the lists (albums 600 px, artists 300 px), for the image cache."""
+        urls = [self.cover_url(a["id"], 600) for a in self.albums.values()]
+        urls += [self.cover_url(a.get("cover"), 300) for a in self.artists]
+        return [u for u in urls if u]
 
     def artist_albums(self, artist: dict) -> list[dict]:
         return [self.albums[i] for i in artist.get("albums") or [] if i in self.albums]
