@@ -1,6 +1,6 @@
 {
   "driver_id": "oppo_music",
-  "version": "0.1.1-test2",
+  "version": "0.1.1",
   "min_core_api": "0.20.0",
   "name": {
     "en": "OPPO Music",

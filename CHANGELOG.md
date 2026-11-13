@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 — 2026-11-13
+
+Validated on the Remote 3 by the maintainer (test versions 0.1.1-test1 and -test2).
+
+- Covers kept on the Remote: the integration keeps a copy of each album cover and serves it itself
+  (port 9310), so the lists open at once instead of downloading the covers again over Wi-Fi. Covers
+  are downloaded one after the other in the background and kept as they are (nothing is resized on
+  the Remote's small processor).
+- Sensor "Signal Oppo": two optional setup settings, font size (1 = 70 %, 2 = 80 %...) and colour
+  (#rrggbb or a colour name). Both off by default.
+
 ## 0.1.0 — 2026-11-11
 
 First release, validated on the Remote 3 by the maintainer (test versions 0.1.0-test1 to -test7 below).
